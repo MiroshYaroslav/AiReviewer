@@ -1,0 +1,15 @@
+[project]
+name = "aireviewer"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.139.0",
+    "httpx>=0.28.1",
+    "pgvector>=0.5.0",
+    "protobuf>=7.35.1",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.51",
+    "uliweb-alembic>=0.6.9",
+    "uvicorn>=0.51.0",
+    "vector>=1.8.1",
+]
