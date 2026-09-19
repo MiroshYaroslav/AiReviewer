@@ -66,6 +66,19 @@ async def process_pull_request(payload: dict) -> None:
             logger.info(f"PR #{pr_number} contains no diff data. Aborting review.")
             return
 
+        added_lines_map = {}
+        current_line = 0
+        for line in diff_text.split("\n"):
+            if line.startswith("@@"):
+                match = re.search(r"\+(\d+)(?:,\d+)?", line)
+                if match:
+                    current_line = int(match.group(1))
+            elif line.startswith("+") and not line.startswith("+++"):
+                added_lines_map[current_line] = line[1:]
+                current_line += 1
+            elif line.startswith(" ") or (line == "" and current_line > 0):
+                current_line += 1
+
         diff_vector = await generate_embedding(diff_text)
 
         async with AsyncSessionLocal() as db:
@@ -184,6 +197,18 @@ async def process_pull_request(payload: dict) -> None:
                 explanation = c.get("explanation", "").strip()
                 suggested_code = c.get("suggested_code", "").strip()
                 is_inline = c.get("is_inline_fix", False)
+
+                if suggested_code:
+                    original_line = added_lines_map.get(line, "")
+                    leading_spaces = len(original_line) - len(original_line.lstrip())
+                    if leading_spaces > 0:
+                        indent = " " * leading_spaces
+                        suggested_code = "\n".join(
+                            [
+                                f"{indent}{s_line.lstrip()}"
+                                for s_line in suggested_code.split("\n")
+                            ]
+                        )
 
                 if is_inline and suggested_code:
                     safe_comment = (
