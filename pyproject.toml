@@ -4,12 +4,26 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.139.0",
+    "flashrank>=0.2.10",
+    "google-genai>=2.24.0",
+    "groq>=1.7.0",
     "httpx>=0.28.1",
+    "numpy>=2.5.1",
     "pgvector>=0.5.0",
     "protobuf>=7.35.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
     "python-dotenv>=1.2.2",
+    "requests>=2.34.2",
     "sqlalchemy>=2.0.51",
     "uliweb-alembic>=0.6.9",
     "uvicorn>=0.51.0",
     "vector>=1.8.1",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+    "ruff>=0.16.8",
 ]
