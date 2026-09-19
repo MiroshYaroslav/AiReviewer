@@ -3,6 +3,7 @@ name = "aireviewer"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "asyncpg>=0.31.0",
     "fastapi>=0.139.0",
     "flashrank>=0.2.10",
     "google-genai>=2.24.0",
