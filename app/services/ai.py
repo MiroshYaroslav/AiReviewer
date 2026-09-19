@@ -50,38 +50,39 @@ async def analyze_code_with_ai(diff_text: str, rules: list[ReviewRule]) -> list[
 
     prompt = f"""You are a strict Senior Security & Architecture Reviewer. Your task is to conduct an EXHAUSTIVE, line-by-line analysis of the provided code diff.
 
-[AVAILABLE RULES]
-{rules_text}
+    [AVAILABLE RULES]
+    {rules_text}
 
-[CODE DIFF]
-{numbered_diff}
+    [CODE DIFF]
+    {numbered_diff}
 
-CRITICAL INSTRUCTIONS (OBLIGATORY):
-1. ALGORITHMIC CHECK: You MUST analyze EVERY SINGLE LINE of the diff starting with a '+'. Do not stop after finding one violation.
-2. HONESTY BY DESIGN: Do not fabricate issues. If a line does not violate any rule exactly, explicitly ignore it. If the entire code is perfect, output an empty JSON array.
-3. NEGATIVE CONSTRAINTS: Ignore formatting, whitespace, or stylistic issues. Focus ONLY on the provided rules.
+    CRITICAL INSTRUCTIONS (OBLIGATORY):
+    1. ALGORITHMIC CHECK: You MUST analyze EVERY SINGLE LINE of the diff starting with a '+'.
+    2. HONESTY BY DESIGN: Do not fabricate issues. If a line does not violate any rule exactly, explicitly ignore it.
+    3. EXACT INDENTATION (CRITICAL): Python relies on indentation. Your "suggested_code" MUST contain the EXACT SAME leading spaces as the original code line. Do NOT strip leading whitespace.
+    4. STRICT JSON ESCAPING: You MUST properly escape all double quotes (\\") and newlines (\\n) inside your JSON string values.
 
-OUTPUT FORMAT:
-You MUST structure your response in TWO sequential phases.
+    OUTPUT FORMAT:
+    You MUST structure your response in TWO sequential phases.
 
-PHASE 1: THE SCRATCHPAD
-You MUST open a `<scratchpad>` tag. Inside, write down your thought process for EVERY added line.
+    PHASE 1: THE SCRATCHPAD
+    You MUST open a `<scratchpad>` tag. Inside, write down your thought process for EVERY added line.
 
-PHASE 2: THE STRICT JSON ARRAY
-ONLY AFTER closing `</scratchpad>`, generate a strict JSON array containing the confirmed violations. Do NOT wrap the JSON in markdown blocks like ```json.
-Each JSON object MUST have EXACTLY these keys:
-- "file_path": string
-- "line_number": integer
-- "rule_id": string
-- "rule_name": string
-- "current_code": string
-- "explanation": string
-- "suggested_code": string
-- "is_inline_fix": boolean
-"""
+    PHASE 2: THE STRICT JSON ARRAY
+    ONLY AFTER closing `</scratchpad>`, generate a strict JSON array containing the confirmed violations. Do NOT wrap the JSON in markdown blocks like ```json.
+    Each JSON object MUST have EXACTLY these keys:
+    - "file_path": string
+    - "line_number": integer
+    - "rule_id": string
+    - "rule_name": string
+    - "current_code": string
+    - "explanation": string
+    - "suggested_code": string (MUST preserve original leading spaces)
+    - "is_inline_fix": boolean
+    """
 
     attempts = 0
-    max_attempts = len(GROQ_API_KEYS)
+    max_attempts = len(GROQ_API_KEYS) * 2
 
     while attempts < max_attempts:
         client = AsyncGroq(api_key=GROQ_API_KEYS[current_groq_idx])
@@ -111,8 +112,16 @@ Each JSON object MUST have EXACTLY these keys:
                 clean_json_text = re.sub(r",\s*(]|})", r"\1", json_str)
                 return json.loads(clean_json_text)
 
-            logger.warning("Failed to extract JSON array from Groq response payload.")
-            return []
+            logger.warning(
+                f"Attempt {attempts + 1}: Failed to extract JSON array from Groq response payload. Retrying..."
+            )
+            attempts += 1
+
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"Attempt {attempts + 1}: Groq returned malformed JSON ({e}). Retrying..."
+            )
+            attempts += 1
 
         except Exception as e:
             error_msg = str(e).lower()
@@ -128,7 +137,7 @@ Each JSON object MUST have EXACTLY these keys:
                 )
                 return []
 
-    logger.error("ALL Groq API Keys are exhausted!")
+    logger.error("ALL attempts to get valid JSON from Groq failed!")
     return []
 
 
